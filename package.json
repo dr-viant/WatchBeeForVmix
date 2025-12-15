@@ -4,12 +4,10 @@
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
-    "build": "pkg . --out-path dist",
-    "build:win": "pkg . --targets node18-win-x64 --out-path dist",
-    "build:linux": "pkg . --targets node18-linux-x64 --out-path dist",
-    "build:mac": "pkg . --targets node18-macos-x64 --out-path dist"
+    "build:win": "nexe app.js --target windows-x64-14.5.0 --output=dist/watchbeeforvmix.exe",
+    "build:linux": "nexe app.js --target linux-x64-14.15.3 --output=dist/watchbeeforvmix.sh"
   },
-  "pkg": {
+  "nexe": {
     "assets": [
       "node_modules/**/*"
     ],
@@ -26,9 +24,10 @@
   "dependencies": {
     "axios": "^1.7.9",
     "chokidar": "^4.0.3",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "nexe": "^5.0.0-beta.4"
   },
   "devDependencies": {
-    "pkg": "^5.8.1"
+    "nexe": "^5.0.0-beta.4"
   }
 }
