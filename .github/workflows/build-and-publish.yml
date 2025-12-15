@@ -39,6 +39,5 @@ jobs:
           files: |
             Release.txt
             dist/watchbeeforvmix.exe
-          draft: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
