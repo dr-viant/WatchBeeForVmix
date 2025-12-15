@@ -24,15 +24,21 @@ jobs:
         name: Install dependencies
 
       - run: npm run build:win
-        name: Build solution
+        name: Build release for windows
+
+      - name: Create a release.txt
+        run: echo ${{ github.sha }} > Release.txt
 
       - name: Attach releases created
         uses: softprops/action-gh-release@v2
         with:
-          body: |
-            # New Release of watchbee for VMIX
-            sha256 : ${{ github.sha }}
-          files: dist/watchbeeforvmix.exe
+          # body: |
+          #   # New Release of watchbee for VMIX
+          #   sha256 : ${{ github.sha }}
+          files: |
+            Release.txt
+            dist/watchbeeforvmix.exe
+          name: "1.0.0.1"
           tag_name: ${{ github.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
