@@ -96,7 +96,7 @@ async function addToVmixPlaylist(filePath) {
     try {
         const absolutePath = path.resolve(filePath);
         const encodedPath = encodeURIComponent(absolutePath);
-        const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${config.playlistName}&Value=${encodedPath}`;
+        const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${absolutePath.split(path.sep).slice(-1)[0]}&Value=${encodedPath}`;
         await axios.get(url);
         console.log(`Added ${absolutePath} to vMix playlist`);
     } catch (error) {
@@ -115,9 +115,9 @@ async function removeFromVmixPlaylist(filePath) {
         const fileInfo = findListItems(xmlState, absolutePath);
         
         if (fileInfo) {
-            const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${encodeURIComponent(fileInfo.inputName)}&Value=${fileInfo.index}`;
+            const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${encodeURIComponent(absolutePath.split(path.sep).slice(-1)[0])}&Value=${fileInfo.index}`;
             await axios.get(url);
-            console.log(`Removed ${absolutePath} from vMix playlist "${fileInfo.inputName}" at index ${fileInfo.index}`);
+            console.log(`Removed ${absolutePath} from vMix playlist "${absolutePath.split(path.sep).slice(-1)[0]}" at index ${fileInfo.index}`);
         } else {
             console.log(`File ${absolutePath} not found in any vMix playlist`);
         }

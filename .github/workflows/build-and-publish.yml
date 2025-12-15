@@ -1,0 +1,36 @@
+
+name: Build and publish WatchBee
+on:
+  push:
+    branches: [ release ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-publish-watchbee:
+    name: Build and publish WatchBee
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+        name: Install dependencies
+
+      - run: npm run build:win
+        name: Build solution
+
+      - name: Attach releases created
+        uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            # New Release of watchbee for VMIX
+            sha256 : ${{ github.sha }}
+          files: dist/watchbeeforvmix.exe
+
