@@ -31,6 +31,7 @@ jobs:
 
       - name: Attach releases created
         uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         with:
           # body: |
           #   # New Release of watchbee for VMIX
@@ -38,7 +39,6 @@ jobs:
           files: |
             Release.txt
             dist/watchbeeforvmix.exe
-          name: "1.0.0.1"
-          tag_name: ${{ github.sha }}
+          draft: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
