@@ -2,7 +2,7 @@
 name: Build and publish WatchBee
 on:
   push:
-    branches: [ release ]
+    branches: [ "release" ]
   pull_request:
     branches: [ "main" ]
 
@@ -11,7 +11,7 @@ jobs:
     name: Build and publish WatchBee
     runs-on: ubuntu-slim
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
