@@ -34,4 +34,5 @@ jobs:
             sha256 : ${{ github.sha }}
           files: dist/watchbeeforvmix.exe
           tag_name: ${{ github.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
