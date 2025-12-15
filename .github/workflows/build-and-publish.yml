@@ -2,10 +2,8 @@
 name: Build and publish WatchBee
 on:
   push:
-    branches: [ "release" ]
-  pull_request:
-    branches: [ "main" ]
-
+    tags:
+      - "v*.*.*"
 jobs:
   build-and-publish-watchbee:
     name: Build and publish WatchBee
