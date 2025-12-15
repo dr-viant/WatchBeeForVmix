@@ -2,7 +2,7 @@
 name: Build and publish WatchBee
 on:
   push:
-    branches: [ release ]
+    branches: [ "release" ]
   pull_request:
     branches: [ "main" ]
 
@@ -11,7 +11,7 @@ jobs:
     name: Build and publish WatchBee
     runs-on: ubuntu-slim
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
@@ -24,14 +24,20 @@ jobs:
         name: Install dependencies
 
       - run: npm run build:win
-        name: Build solution
+        name: Build release for windows
+
+      - name: Create a release.txt
+        run: echo ${{ github.sha }} > Release.txt
 
       - name: Attach releases created
         uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
         with:
-          body: |
-            # New Release of watchbee for VMIX
-            sha256 : ${{ github.sha }}
-          files: dist/watchbeeforvmix.exe
-          tag_name: ${{ github.sha }}
+          # body: |
+          #   # New Release of watchbee for VMIX
+          #   sha256 : ${{ github.sha }}
+          files: |
+            Release.txt
+            dist/watchbeeforvmix.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
 
