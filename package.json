@@ -4,8 +4,9 @@
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
-    "build:win": "nexe app.js --target windows-x64-14.5.0 --output=dist/watchbeeforvmix.exe",
-    "build:linux": "nexe app.js --target linux-x64-14.15.3 --output=dist/watchbeeforvmix.sh"
+    "build:win": "nexe index.js --target windows-x64-14.5.0 --output=dist/watchbeeforvmix.exe -r node_modules/**/* --input=package.json",
+    "build:linux": "nexe index.js --target linux-x64-14.15.3 --output=dist/watchbeeforvmixLin -r node_modules/**/* --input=package.json",
+    "build:mac": "nexe index.js --target alpine-x64-12.9.1 --output=dist/watchbeeforvmixMac -r node_modules/**/* --input=package.json"
   },
   "nexe": {
     "assets": [
@@ -25,6 +26,7 @@
     "axios": "^1.7.9",
     "chokidar": "^4.0.3",
     "dotenv": "^16.4.7",
+    "fs": "^0.0.1-security",
     "nexe": "^5.0.0-beta.4"
   },
   "devDependencies": {
