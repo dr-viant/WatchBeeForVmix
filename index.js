@@ -1,66 +1,74 @@
+// watcher.js
 const chokidar = require('chokidar');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 
-// Get the directory where the executable is located
-const getExeDir = () => {
-    // When packaged with pkg, process.pkg is defined
-    if (process.pkg) {
-        return path.dirname(process.execPath);
-    }
-    return __dirname;
-};
-
-// Load configuration
-let config;
-try {
-    const configPath = path.join(getExeDir(), 'config.json');
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-} catch (error) {
-    // Default configuration if config.json is not found
-    config = {
-        folderToWatch: './media',
-        vmixUrl: 'http://localhost:8088',
-        playlistName: 'List',
-        supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg']
-    };
-    
-    // Create default config file if it doesn't exist
-    try {
-        fs.writeFileSync(
-            path.join(getExeDir(), 'config.json'), 
-            JSON.stringify(config, null, 2)
-        );
-        console.log('Created default config.json');
-    } catch (writeError) {
-        console.error('Failed to create default config.json:', writeError.message);
-    }
+function getBaseDir() {
+  // Når koden er pakket som binary med nexe, er process.execPath exe’en
+  if (process.pkg) {
+    return path.dirname(process.execPath);
+  }
+  // Ved normal node-kørsel er __dirname scriptets folder
+  return __dirname;
 }
 
-// Initialize watcher
-const watcher = chokidar.watch(config.folderToWatch, {
-    ignored: /(^|[\/\\])\../, // ignore hidden files
+function loadConfig() {
+  const baseDir = getBaseDir();
+  const configPath = path.join(baseDir, 'config.json');
+
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch {
+    // fallback + skriv default config ved siden af exe'en
+    config = {
+      folderToWatch: path.join(baseDir, 'media'),
+      vmixUrl: 'http://localhost:8088',
+      playlistName: 'List',
+      supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg'],
+    };
+    try {
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(config, null, 2),
+        'utf8',
+      );
+      console.log('Created default config.json');
+    } catch (err) {
+      console.error('Failed to write config.json:', err.message);
+    }
+  }
+
+  // Sørg for at folderToWatch er absolut
+  if (!path.isAbsolute(config.folderToWatch)) {
+    config.folderToWatch = path.join(baseDir, config.folderToWatch);
+  }
+
+  return config;
+}
+
+function startWatcher(configOverride) {
+  const config =
+    configOverride !== undefined && configOverride !== null
+      ? configOverride
+      : loadConfig();
+
+  console.log('Configuration:', config);
+  console.log(`Watching ${config.folderToWatch} for changes...`);
+  console.log(`vMix API URL: ${config.vmixUrl}`);
+
+  const watcher = chokidar.watch(config.folderToWatch, {
+    ignored: /(^|[\/\\])\../,
     persistent: true,
     awaitWriteFinish: {
-        stabilityThreshold: 2000,
-        pollInterval: 100
-    }
-});
+      stabilityThreshold: 2000,
+      pollInterval: 100,
+    },
+  });
 
-// Helper function to parse XML response
-async function getVmixState() {
-    try {
-        const response = await axios.get(`${config.vmixUrl}/api`);
-        return response.data;
-    } catch (error) {
-        console.error(`Error getting vMix state: ${error.message}`);
-        return null;
-    }
-}
 
-// Helper function to find list items for a specific input
-function findListItems(xmlText, absolutePath) {
+const findListItems = async (xmlText, absolutePath) => {
     try {
         const listMatch = xmlText.match(/<input[^>]*type="VideoList"[^>]*>[\s\S]*?<list>([\s\S]*?)<\/list>/g);
         
@@ -84,73 +92,89 @@ function findListItems(xmlText, absolutePath) {
     }
 }
 
-// Helper function to add file to vMix playlist
-async function addToVmixPlaylist(filePath) {
-    const extension = path.extname(filePath).toLowerCase();
-    
-    if (!config.supportedExtensions.includes(extension)) {
-        console.log(`Ignoring file ${filePath} - unsupported format`);
-        return;
-    }
-
+const getVmixState = async () => {
     try {
-        const absolutePath = path.resolve(filePath);
-        const encodedPath = encodeURIComponent(absolutePath);
-        const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${absolutePath.split(path.sep).slice(-1)[0]}&Value=${encodedPath}`;
-        await axios.get(url);
-        console.log(`Added ${absolutePath} to vMix playlist`);
+        const response = await axios.get(`${config.vmixUrl}/api`);
+        return response.data;
     } catch (error) {
-        console.error(`Error adding file to vMix: ${error.message}`);
+        console.error(`Error getting vMix state: ${error.message}`);
+        return null;
     }
 }
 
-// Helper function to remove file from vMix playlist
-async function removeFromVmixPlaylist(filePath) {
+
+  const addToVmixPlaylist = async (filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    if (!config.supportedExtensions.includes(ext)) {
+      console.log(`Ignoring ${filePath}, unsupported extension`);
+      return;
+    }
     try {
+      const absolutePath = path.resolve(filePath);
+      const encodedPath = encodeURIComponent(absolutePath);
+      const inputName = path.basename(path.dirname(absolutePath));
+      const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${inputName}&Value=${encodedPath}`;
+      await axios.get(url);
+      console.log(`Added ${absolutePath} to vMix playlist: ${inputName}`);
+    } catch (err) {
+      console.error('Error adding to vMix:', err.message);
+    }
+  };
+
+    // Helper function to remove file from vMix playlist
+  const removeFromVmixPlaylist = async (filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    if (!config.supportedExtensions.includes(ext)) {
+      console.log(`Ignoring ${filePath}, unsupported extension`);
+      return;
+    }
+      try {
         const absolutePath = path.resolve(filePath);
-        
-        const xmlState = await getVmixState();
+        const inputName = path.basename(path.dirname(absolutePath));
+        const xmlState = await getVmixState(); // missing function
         if (!xmlState) return;
-        
-        const fileInfo = findListItems(xmlState, absolutePath);
-        
-        if (fileInfo) {
-            const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${encodeURIComponent(absolutePath.split(path.sep).slice(-1)[0])}&Value=${fileInfo.index}`;
-            await axios.get(url);
-            console.log(`Removed ${absolutePath} from vMix playlist "${absolutePath.split(path.sep).slice(-1)[0]}" at index ${fileInfo.index}`);
-        } else {
-            console.log(`File ${absolutePath} not found in any vMix playlist`);
+          
+          const fileInfo = findListItems(xmlState, absolutePath);
+          
+          if (fileInfo) {
+              const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${inputName}&Value=${fileInfo.index}`;
+              await axios.get(url);
+              console.log(`Removed ${absolutePath} from vMix playlist "${inputName}" at index ${fileInfo.index}`);
+          } else {
+              console.log(`File ${absolutePath} not found in any vMix playlist`);
+          }
+        } catch (error) {
+            console.error(`Error removing file from vMix: ${error.message}`);
         }
-    } catch (error) {
-        console.error(`Error removing file from vMix: ${error.message}`);
     }
-}
 
-// Watch for file events
-watcher
-    .on('add', path => {
-        console.log(`File ${path} has been added`);
-        addToVmixPlaylist(path);
+
+  watcher
+    .on('add', (p) => {
+      console.log('File added:', p);
+      void addToVmixPlaylist(p);
     })
-    .on('unlink', path => {
-        console.log(`File ${path} has been removed`);
-        removeFromVmixPlaylist(path);
+    .on('change', (p) => {
+      console.log('File changed:', p);
+      void addToVmixPlaylist(p);
     })
-    .on('change', path => {
-        console.log(`File ${path} has been changed`);
-        addToVmixPlaylist(path);
+    .on('unlink', (p) => {
+      console.log('File removed:', p);
+      void removeFromVmixPlaylist(p);
     })
-    .on('rename', (oldPath, newPath) => {
-        console.log(`File renamed from ${oldPath} to ${newPath}`);
-        removeFromVmixPlaylist(oldPath);
-        addToVmixPlaylist(newPath);
-    })
-    .on('error', error => {
-        console.error(`Watcher error: ${error}`);
+    .on('error', (err) => {
+      console.error('Watcher error:', err);
     });
 
-// Log that we're running
-console.log('Configuration:', config);
-console.log(`Watching ${config.folderToWatch} for changes...`);
-console.log(`vMix API URL: ${config.vmixUrl}`);
-console.log(`Supported file types: ${config.supportedExtensions.join(', ')}`);
+  return {
+    watcher,
+    stop: () => watcher.close(),
+  };
+}
+
+// Start kun automatisk, når filen køres direkte (CLI / binary)
+if (require.main === module) {
+  startWatcher();
+}
+
+module.exports = { startWatcher, loadConfig };

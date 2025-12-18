@@ -1,21 +1,20 @@
 {
   "name": "watchbeeforvmix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
-    "build:win": "nexe index.js --target windows-x64-14.5.0 --output=dist/watchbeeforvmix.exe -r node_modules/**/* --input=package.json",
+    "build:win": "npx nexe index.js -t windows-22.21.1 --output=dist/watchbeeforvmixWin -r node_modules/**/* --input=package.json --python=/usr/bin/python3 --build",
     "build:linux": "nexe index.js --target linux-x64-14.15.3 --output=dist/watchbeeforvmixLin -r node_modules/**/* --input=package.json",
-    "build:mac": "nexe index.js --target alpine-x64-12.9.1 --output=dist/watchbeeforvmixMac -r node_modules/**/* --input=package.json"
+    "build:mac": "nexe index.js --target alpine-x64-12.9.1 --output=dist/watchbeeforvmixMac -r node_modules/**/* --input=package.json",
+    "build:mac2": "nexe index.js -t windows-22.21.1 --output=dist/watchbeeforvmixMac -r node_modules/**/* --input=package.json --python=/usr/bin/python3 --build",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest watch"
   },
   "nexe": {
     "assets": [
       "node_modules/**/*"
-    ],
-    "targets": [
-      "node18-win-x64",
-      "node18-linux-x64",
-      "node18-macos-x64"
     ]
   },
   "keywords": [],
@@ -27,7 +26,8 @@
     "chokidar": "^4.0.3",
     "dotenv": "^16.4.7",
     "fs": "^0.0.1-security",
-    "nexe": "^5.0.0-beta.4"
+    "nock": "^14.0.10",
+    "vitest": "^4.0.16"
   },
   "devDependencies": {
     "nexe": "^5.0.0-beta.4"
