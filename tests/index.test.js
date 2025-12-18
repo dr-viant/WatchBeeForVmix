@@ -50,7 +50,7 @@ describe('watcher integration med vMix API', () => {
     const filePath = path.join(dir, 'test.mp4');
     const absolutePath = path.resolve(filePath);
     const encodedPath = encodeURIComponent(absolutePath);
-    const inputName = path.basename(absolutePath);
+    const inputName = path.basename(path.dirname(absolutePath));
 
     // Forvent, at din kode laver et GET til dette endpoint
     nock(baseUrl)
