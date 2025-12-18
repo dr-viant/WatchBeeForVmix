@@ -1,9 +1,9 @@
 
-name: Build and create release on new tag
+name: Build a windows release and create release on new tag
 on:
   create:
     tags:
-      - "v*.*.*"
+      - "windows*.*.*"
 jobs:
   build-and-publish-watchbee:
     name: Build and publish WatchBee
