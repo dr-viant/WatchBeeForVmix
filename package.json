@@ -4,7 +4,7 @@
   "main": "index.js",
   "bin": "index.js",
   "scripts": {
-    "build:win": "npx nexe index.js -t windows-22.21.1 --output=dist/watchbeeforvmixWin -r node_modules/**/* --input=package.json --python=/usr/bin/python3 --build",
+    "build:win": "npx nexe index.js -t windows-22.21.1 --output=dist/watchbeeforvmixWin -r node_modules/**/* --input=package.json --remote=https://github.com/dr-viant/WatchBeeForVmix/releases/download/windows-1.0/",
     "build:linux": "npx nexe index.js --target linux-x64-22.21.1 --output=dist/watchbeeforvmixLin -r node_modules/**/* --input=package.json --python=/usr/bin/python3 --build",
     "build:mac": "npx nexe index.js -t alpine-22.21.1 --output=dist/watchbeeforvmixMac -r node_modules/**/* --input=package.json --python=/usr/bin/python3 --build",
     "test": "vitest",

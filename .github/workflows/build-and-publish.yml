@@ -1,12 +1,12 @@
 
-name: Build and create release on new tag
+name: Freeze a release at a given commit, without build
 on:
   create:
     tags:
-      - "release-*.*"
+      - "CBP-*.*"
 jobs:
   build-and-publish-watchbee:
-    name: Build and publish WatchBee
+    name: Run tests and freeze version
     runs-on: ubuntu-slim
     permissions:
       contents: write
@@ -21,8 +21,16 @@ jobs:
       - run: npm ci
         name: Install dependencies
 
-      - run: npm run build:win
-        name: Build release for windows
+      - run: npm run test:run
+        name: Test npm using test suite
+
+  create-release:
+    name: Run tests and freeze version
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+      packages: write
+    steps:
 
       - name: Create a release.txt
         run: echo ${{ github.sha }} > Release.txt
@@ -31,11 +39,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
         with:
-          # body: |
-          #   # New Release of watchbee for VMIX
-          #   sha256 : ${{ github.sha }}
+          body: |
+            # New Release of watchbee for VMIX
+            sha256 : ${{ github.sha }}
           files: |
             Release.txt
-            dist/watchbeeforvmix.exe
           token: ${{ secrets.GITHUB_TOKEN }}
-
