@@ -3,7 +3,7 @@ name: Build and create release on new tag
 on:
   create:
     tags:
-      - "v*.*.*"
+      - "release-*.*"
 jobs:
   build-and-publish-watchbee:
     name: Build and publish WatchBee
