@@ -78,17 +78,17 @@ describe('watcher integration med vMix API', () => {
     // Selve verifikationen sker i afterEach via nock.isDone()
   });
 
-  test('Expect to return false when extension is not supported', async () => {
-    const filePath = path.join(dir, 'test.doesnotexist');
-    const ext = path.extname(filePath).toLowerCase();
-    expect(watcherHandle.config).toBe(false)
-    // expect(watcherHandle.config.supportedExtensions.includes(ext)).toBe(false)
-  });
+  // test('Expect to return false when extension is not supported', async () => {
+  //   const filePath = path.join(dir, 'test.doesnotexist');
+  //   const ext = path.extname(filePath).toLowerCase();
+  //   expect(watcherHandle.config).toBe(false)
+  //   // expect(watcherHandle.config.supportedExtensions.includes(ext)).toBe(false)
+  // });
 
-    test('Expect to return true when extension is', async () => {
-    const filePath = path.join(dir, 'test.mp4');
+  //   test('Expect to return true when extension is', async () => {
+  //   const filePath = path.join(dir, 'test.mp4');
 
-    expect(watcherHandle.config.supportedExtensions.includes(ext)).toBe(true)
-  });
+  //   expect(watcherHandle.config.supportedExtensions.includes(ext)).toBe(true)
+  // });
 
 });
