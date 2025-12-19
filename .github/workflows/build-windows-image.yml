@@ -39,6 +39,6 @@ jobs:
           #   sha256 : ${{ github.sha }}
           files: |
             Release.txt
-            dist/watchbeeforvmixWin
+            dist\watchbeeforvmixWin.exe
           token: ${{ secrets.GITHUB_TOKEN }}
 
