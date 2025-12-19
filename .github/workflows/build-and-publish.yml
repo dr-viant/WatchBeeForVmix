@@ -5,7 +5,7 @@ on:
     tags:
       - "CBP-*.*"
 jobs:
-  build-and-publish-watchbee:
+  build-and-test:
     name: Run tests and freeze version
     runs-on: ubuntu-slim
     permissions:
@@ -30,6 +30,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+    needs: build-and-test
     steps:
 
       - name: Create a release.txt
