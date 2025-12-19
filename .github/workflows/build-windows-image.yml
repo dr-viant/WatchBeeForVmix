@@ -1,11 +1,10 @@
-
 name: Build a windows release on new tag
 on:
   create:
     tags:
       - "windows*.*.*"
 jobs:
-build-and-test:
+  build-and-test:
     name: Build and test using node tests
     runs-on: windows-latest
     permissions:
@@ -57,4 +56,3 @@ build-and-test:
             Release.txt
             dist\watchbeeforvmixWin.exe
           token: ${{ secrets.GITHUB_TOKEN }}
-
