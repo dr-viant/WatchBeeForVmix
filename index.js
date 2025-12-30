@@ -25,7 +25,6 @@ function loadConfig() {
     config = {
       folderToWatch: path.join(baseDir, 'media'),
       vmixUrl: 'http://localhost:8088',
-      playlistName: 'List',
       supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg', '.mxf', '.mts'],
     };
     try {
