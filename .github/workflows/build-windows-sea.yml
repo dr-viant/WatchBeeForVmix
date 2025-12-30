@@ -58,7 +58,5 @@ jobs:
           #   # New Release of watchbee for VMIX
           #   sha256 : ${{ github.sha }}
           files: |
-            Release.txt
-            dist/**
-            index.exe
+            dist/index.exe
           token: ${{ secrets.GITHUB_TOKEN }}
