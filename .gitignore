@@ -1,6 +1,7 @@
 
 /media
 /node_modules
-/dist
+/dist/**
+!/dist/.gitkeep
 **.exe
 config.json
