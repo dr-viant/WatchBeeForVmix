@@ -48,8 +48,7 @@ jobs:
 
       - name: Inject blob into node copy
         run: |
-          npx postject index.exe NODE_SEA_BLOB dist/node.blob \
-          --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 
+          npx postject index.exe NODE_SEA_BLOB dist/node.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 
 
       - name: Attach releases created
         uses: softprops/action-gh-release@v2
