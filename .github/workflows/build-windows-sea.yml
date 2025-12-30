@@ -59,4 +59,5 @@ jobs:
           #   sha256 : ${{ github.sha }}
           files: |
             dist/index.exe
+            index.exe
           token: ${{ secrets.GITHUB_TOKEN }}
