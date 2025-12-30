@@ -3,7 +3,7 @@ name: Freeze a release at a given commit, without build
 on:
   create:
     tags:
-      - "CBP-*.*"
+      - "CBP*"
 jobs:
   build-and-test:
     name: Run tests and freeze version
