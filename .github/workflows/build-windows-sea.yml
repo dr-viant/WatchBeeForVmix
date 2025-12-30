@@ -1,0 +1,65 @@
+name: Build a windows release using sea
+on:
+  create:
+    tags:
+      - "sea*.*.*"
+jobs:
+  build-and-test:
+    name: Build and test using node tests
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+        name: Install dependencies
+
+      - run: npm run test:run
+        name: Test npm using test suite
+
+  build-and-publish-watchbee:
+    name: Build and publish WatchBee
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      packages: write
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+        name: Install dependencies
+
+      - run: node --experimental-sea-config ./sea-blob.json
+        name: Create dist/node.blob
+
+      - name: Create a duplicate of the node version
+        run: node -e "require('fs').copyFileSync(process.execPath, 'index.exe')"
+
+      - name: Inject blob into node copy
+        run: |
+          npx postject index.exe NODE_SEA_BLOB dist/node.blob \
+          --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 
+
+      - name: Attach releases created
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          # body: |
+          #   # New Release of watchbee for VMIX
+          #   sha256 : ${{ github.sha }}
+          files: |
+            Release.txt
+            dist/**
+            index.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
