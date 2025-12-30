@@ -1,0 +1,9 @@
+{
+  "main": "./index_sea.js",
+  "output": "./dist/node.blob",
+  "disableExperimentalSEAWarning": true,
+  "useSnapshot": false, 
+  "useCodeCache": false,
+  "execArgv": ["--no-warnings", "--max-old-space-size=4096"],
+  "execArgvExtension": "env"
+} 
