@@ -5,3 +5,5 @@
 !/dist/.gitkeep
 **.exe
 config.json
+**.zip
+**.sh
