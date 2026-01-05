@@ -65,7 +65,7 @@ function startWatcher(configOverride) {
       pollInterval: 100,
     },
   });
-
+}
 
 const findListItems = async (xmlText, absolutePath) => {
     try {
@@ -101,65 +101,83 @@ const getVmixState = async () => {
     }
 }
 
-
-  const addToVmixPlaylist = async (filePath) => {
-    const ext = path.extname(filePath).toLowerCase();
-    if (!config.supportedExtensions.includes(ext)) {
-      console.log(`Ignoring ${filePath}, unsupported extension`);
-      return;
-    }
-    try {
-      const absolutePath = path.resolve(filePath);
-      const encodedPath = encodeURIComponent(absolutePath);
-      const inputName = path.basename(path.dirname(absolutePath));
-      const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${inputName}&Value=${encodedPath}`;
-      await axios.get(url);
-      console.log(`Added ${absolutePath} to vMix playlist: ${inputName}`);
-    } catch (err) {
-      console.error('Error adding to vMix:', err.message);
-    }
-  };
+async function addToVmixPlaylist(config, filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  if (!config.supportedExtensions.includes(ext)) {
+    console.log(`Ignoring ${filePath} - unsupported extension`);
+    return;
+  }
+  try {
+    const absolutePath = path.resolve(filePath);
+    const encodedPath = encodeURIComponent(absolutePath);
+    const inputName = path.basename(path.dirname(absolutePath));
+    const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${inputName}&Value=${encodedPath}`;
+    await axios.get(url);
+    console.log(`Added ${absolutePath} to vMix playlist: ${inputName}`);
+  } catch (err) {
+    console.error('Error adding to vMix:', err.message);
+  }
+}
 
     // Helper function to remove file from vMix playlist
-  const removeFromVmixPlaylist = async (filePath) => {
-    const ext = path.extname(filePath).toLowerCase();
-    if (!config.supportedExtensions.includes(ext)) {
-      console.log(`Ignoring ${filePath}, unsupported extension`);
-      return;
-    }
-      try {
-        const absolutePath = path.resolve(filePath);
-        const inputName = path.basename(path.dirname(absolutePath));
-        const xmlState = await getVmixState(); // missing function
-        if (!xmlState) return;
-          
-          const fileInfo = findListItems(xmlState, absolutePath);
-          
-          if (fileInfo) {
-              const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${inputName}&Value=${fileInfo.index}`;
-              await axios.get(url);
-              console.log(`Removed ${absolutePath} from vMix playlist "${inputName}" at index ${fileInfo.index}`);
-          } else {
-              console.log(`File ${absolutePath} not found in any vMix playlist`);
-          }
-        } catch (error) {
-            console.error(`Error removing file from vMix: ${error.message}`);
+const removeFromVmixPlaylist = async (config, filePath) => {
+  const ext = path.extname(filePath).toLowerCase();
+  if (!config.supportedExtensions.includes(ext)) {
+    console.log(`Ignoring ${filePath}, unsupported extension`);
+    return;
+  }
+    try {
+      const absolutePath = path.resolve(filePath);
+      const inputName = path.basename(path.dirname(absolutePath));
+      const xmlState = await getVmixState(); // missing function
+      if (!xmlState) return;
+        
+        const fileInfo = findListItems(xmlState, absolutePath);
+        
+        if (fileInfo) {
+            const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${inputName}&Value=${fileInfo.index}`;
+            await axios.get(url);
+            console.log(`Removed ${absolutePath} from vMix playlist "${inputName}" at index ${fileInfo.index}`);
+        } else {
+            console.log(`File ${absolutePath} not found in any vMix playlist`);
         }
-    }
+      } catch (error) {
+          console.error(`Error removing file from vMix: ${error.message}`);
+      }
+  }
 
+
+function startWatcher(configOverride) {
+  const config =
+    configOverride !== undefined && configOverride !== null
+      ? configOverride
+      : loadConfig();
+
+  console.log('Configuration:', config);
+  console.log(`Watching ${config.folderToWatch} for changes...`);
+  console.log(`vMix API URL: ${config.vmixUrl}`);
+
+  const watcher = chokidar.watch(config.folderToWatch, {
+    ignored: /(^|[\/\\])\../,
+    persistent: true,
+    awaitWriteFinish: {
+      stabilityThreshold: 2000,
+      pollInterval: 100,
+    },
+  });
 
   watcher
     .on('add', (p) => {
       console.log('File added:', p);
-      void addToVmixPlaylist(p);
+      void addToVmixPlaylist(config, p);
     })
     .on('change', (p) => {
       console.log('File changed:', p);
-      void addToVmixPlaylist(p);
+      void addToVmixPlaylist(config, p);
     })
     .on('unlink', (p) => {
       console.log('File removed:', p);
-      void removeFromVmixPlaylist(p);
+      void removeFromVmixPlaylist(config, p);
     })
     .on('error', (err) => {
       console.error('Watcher error:', err);
@@ -176,4 +194,4 @@ if (require.main === module) {
   startWatcher();
 }
 
-module.exports = { startWatcher, loadConfig };
+module.exports = { startWatcher, loadConfig, addToVmixPlaylist, removeFromVmixPlaylist };
