@@ -11,7 +11,7 @@ const baseUrl = 'http://localhost:8088';
 
 let dir = await fs.mkdtemp(path.join(os.tmpdir(), 'watcher-base'));
 let dir2 = await fs.mkdtemp(path.join(dir, 'watcher-server1'));
-let dir3 = await fs.mkdtemp(path.join(dir, 'watcher-server1'));
+let dir3 = await fs.mkdtemp(path.join(dir, 'watcher-server2'));
 
 const mp4_file = path.join(dir2, 'test.mp4');
 const mp4_file_2 = path.join(dir3, 'test.mp4');
