@@ -9,7 +9,7 @@ jobs:
       fail-fast: true
       matrix:
         run_on: [ubunut-slim, windows-latest]
-    name: Run tests on ubuntu box and upload node modules
+    name: Run tests on ubuntu and windows
     runs-on: ${{ matrix.run_on }}
     permissions:
       contents: write
