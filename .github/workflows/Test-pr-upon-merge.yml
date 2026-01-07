@@ -1,0 +1,33 @@
+
+name: Test a release when merging PR
+on:
+  pull_request:
+    types:
+      - opened
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: true
+      matrix:
+        run_on: [ubunut-slim, windows-latest]
+    name: Run tests on ubuntu box and upload node modules
+    runs-on: ${{ matrix.run_on }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+        name: Install dependencies
+
+      - run: npm run test:run
+        name: Test npm using test suite
