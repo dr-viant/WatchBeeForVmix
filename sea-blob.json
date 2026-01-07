@@ -1,5 +1,5 @@
 {
-  "main": "./index_sea.js",
+  "main": "./index.js",
   "output": "./dist/node.blob",
   "disableExperimentalSEAWarning": true,
   "useSnapshot": false, 

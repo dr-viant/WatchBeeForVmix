@@ -1,4 +1,12 @@
 // watcher.js
+
+const sea = require('node:sea');
+
+if (sea.isSea()) {
+  const { createRequire } = require('node:module');
+  require = createRequire(__filename);
+}
+
 const chokidar = require('chokidar');
 const axios = require('axios');
 const path = require('path');
@@ -189,8 +197,9 @@ function startWatcher(configOverride) {
   };
 }
 
-// Start kun automatisk, når filen køres direkte (CLI / binary)
 if (require.main === module) {
+  startWatcher();
+} else {
   startWatcher();
 }
 
