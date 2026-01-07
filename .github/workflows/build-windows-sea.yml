@@ -4,9 +4,13 @@ on:
     tags:
       - 'sea-[0-9].[0-9]'
 jobs:
-  test-on-linux-and-upload-modules:
+  test-release:
+    strategy:
+      fail-fast: true
+      matrix:
+        run_on: [ubunut-slim, windows-latest]
     name: Run tests on ubuntu box and upload node modules
-    runs-on: ubuntu-slim
+    runs-on: ${{ matrix.run_on }}
     permissions:
       contents: write
       packages: write
@@ -16,33 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - run: npm ci
-        name: Install dependencies
-
-      - run: npm run test:run
-        name: Test npm using test suite
-
-      - uses: montudor/action-zip@v1
-        with:
-          args: zip -qq -r modules.zip node_modules
-        
-      - uses: actions/upload-artifact@v4
-        with:
-          name: modules.zip
-
-  build-and-test:
-    name: Build and test using node tests on a windows image
-    runs-on: windows-latest
-    permissions:
-      contents: write
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
+          cache: npm
 
       - run: npm ci
         name: Install dependencies
@@ -56,7 +34,7 @@ jobs:
     permissions:
       contents: write
       packages: write
-    needs: build-and-test
+    needs: test-release
     steps:
       - uses: actions/checkout@v4
 
@@ -71,15 +49,14 @@ jobs:
         name: Create dist/node.blob
 
       - name: Create a duplicate of the node version
-        run: node -e "require('fs').copyFileSync(process.execPath, 'index.exe')"
+        run: node -e "require('fs').copyFileSync(process.execPath, 'watchbee.exe')"
 
       - name: Inject blob into node copy
         run: |
           npx postject watchbee.exe NODE_SEA_BLOB dist/node.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: modules.zip
+      - name: 'Compress node_modules'
+        run: Compress-Archive -Path node_modules/* -Destination modules.zip
 
       - name: Attach releases created
         uses: softprops/action-gh-release@v2
