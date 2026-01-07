@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        run_on: [ubunut-slim, windows-latest]
+        run_on: [ubuntu-slim, windows-latest]
     name: Run tests on ubuntu and windows
     runs-on: ${{ matrix.run_on }}
     permissions:
