@@ -48,31 +48,15 @@ function loadConfig() {
   }
 
   // Sørg for at folderToWatch er absolut
-  if (!path.isAbsolute(config.folderToWatch)) {
+  if (Array.isArray(config.folderToWatch)) {
+    config.folderToWatch = config.folderToWatch.map((f) =>
+      path.isAbsolute(f) ? f : path.join(baseDir, f),
+    );
+  } else if (!path.isAbsolute(config.folderToWatch)) {
     config.folderToWatch = path.join(baseDir, config.folderToWatch);
   }
 
   return config;
-}
-
-function startWatcher(configOverride) {
-  const config =
-    configOverride !== undefined && configOverride !== null
-      ? configOverride
-      : loadConfig();
-
-  console.log('Configuration:', config);
-  console.log(`Watching ${config.folderToWatch} for changes...`);
-  console.log(`vMix API URL: ${config.vmixUrl}`);
-
-  const watcher = chokidar.watch(config.folderToWatch, {
-    ignored: /(^|[\/\\])\../,
-    persistent: true,
-    awaitWriteFinish: {
-      stabilityThreshold: 2000,
-      pollInterval: 100,
-    },
-  });
 }
 
 const findListItems = async (xmlText, absolutePath) => {
@@ -99,14 +83,29 @@ const findListItems = async (xmlText, absolutePath) => {
     }
 }
 
-const getVmixState = async () => {
+const getVmixState = async (vmixUrl) => {
     try {
-        const response = await axios.get(`${config.vmixUrl}/api`);
+        const response = await axios.get(`${vmixUrl}/api`);
         return response.data;
     } catch (error) {
         console.error(`Error getting vMix state: ${error.message}`);
         return null;
     }
+}
+
+function getPlaylistName(config, absolutePath) {
+  const folders = Array.isArray(config.folderToWatch)
+    ? config.folderToWatch
+    : [config.folderToWatch];
+  const normalizedFile = path.resolve(absolutePath).toLowerCase();
+  for (const folder of folders) {
+    const normalizedFolder = path.resolve(folder);
+    if (normalizedFile.startsWith((normalizedFolder + path.sep).toLowerCase())) {
+      return path.basename(normalizedFolder);
+    }
+  }
+  // Fallback: parent directory name
+  return path.basename(path.dirname(absolutePath));
 }
 
 async function addToVmixPlaylist(config, filePath) {
@@ -118,7 +117,7 @@ async function addToVmixPlaylist(config, filePath) {
   try {
     const absolutePath = path.resolve(filePath);
     const encodedPath = encodeURIComponent(absolutePath);
-    const inputName = path.basename(path.dirname(absolutePath));
+    const inputName = getPlaylistName(config, absolutePath);
     const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${inputName}&Value=${encodedPath}`;
     await axios.get(url);
     console.log(`Added ${absolutePath} to vMix playlist: ${inputName}`);
@@ -136,11 +135,11 @@ const removeFromVmixPlaylist = async (config, filePath) => {
   }
     try {
       const absolutePath = path.resolve(filePath);
-      const inputName = path.basename(path.dirname(absolutePath));
-      const xmlState = await getVmixState(); // missing function
+      const inputName = getPlaylistName(config, absolutePath);
+      const xmlState = await getVmixState(config.vmixUrl);
       if (!xmlState) return;
         
-        const fileInfo = findListItems(xmlState, absolutePath);
+        const fileInfo = await findListItems(xmlState, absolutePath);
         
         if (fileInfo) {
             const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${inputName}&Value=${fileInfo.index}`;

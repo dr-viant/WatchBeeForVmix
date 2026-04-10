@@ -54,9 +54,8 @@ describe('watcher integration med vMix API', () => {
     const filePath = path.join(dir, 'test.mp4');
     const absolutePath = path.resolve(filePath);
     const encodedPath = encodeURIComponent(absolutePath);
-    const inputName = path.basename(path.dirname(absolutePath));
-
-    await fs.writeFile(filePath, 'mockdata');
+    // Playlist name comes from the watched folder, not the file's parent dir
+    const inputName = path.basename(dir);
 
     nock(baseUrl)
       .get(
@@ -64,8 +63,71 @@ describe('watcher integration med vMix API', () => {
       )
       .reply(200, { ok: true });
 
-    await sleep(500);
+    await fs.writeFile(filePath, 'mockdata');
 
+    await sleep(3000);
+
+  });
+});
+
+describe('watcher multi-folder support', () => {
+  let dir1;
+  let dir2;
+  let watcherHandle;
+  const baseUrl = 'http://localhost:8088';
+
+  beforeEach(async () => {
+    dir1 = await fs.mkdtemp(path.join(os.tmpdir(), 'watcher-folder1-'));
+    dir2 = await fs.mkdtemp(path.join(os.tmpdir(), 'watcher-folder2-'));
+
+    nock.cleanAll();
+    nock.disableNetConnect();
+
+    const config = {
+      folderToWatch: [dir1, dir2],
+      vmixUrl: baseUrl,
+      supportedExtensions: ['.mp4'],
+    };
+
+    watcherHandle = startWatcher(config);
+  });
+
+  afterEach(async () => {
+    await watcherHandle?.stop?.();
+    await fs.rm(dir1, { recursive: true, force: true });
+    await fs.rm(dir2, { recursive: true, force: true });
+    expect(nock.isDone()).toBe(true);
+    nock.cleanAll();
+    nock.enableNetConnect();
+  });
+
+  it('router filer til den korrekte playlist baseret på konfigureret mappe', async () => {
+    const file1 = path.join(dir1, 'clip1.mp4');
+    const file2 = path.join(dir2, 'clip2.mp4');
+
+    nock(baseUrl)
+      .get(`/api/?Function=ListAdd&Input=${path.basename(dir1)}&Value=${encodeURIComponent(path.resolve(file1))}`)
+      .reply(200, { ok: true });
+
+    nock(baseUrl)
+      .get(`/api/?Function=ListAdd&Input=${path.basename(dir2)}&Value=${encodeURIComponent(path.resolve(file2))}`)
+      .reply(200, { ok: true });
+
+    await fs.writeFile(file1, 'mockdata');
+    await fs.writeFile(file2, 'mockdata');
+
+    await sleep(3000);
+  });
+
+  it('ignorerer filer med ikke-understøttet extension i multi-folder setup', async () => {
+    const txtFile = path.join(dir1, 'ignore.txt');
+    const xmlFile = path.join(dir2, 'ignore.xml');
+
+    // No nock mocks registered — any HTTP call would throw
+    await fs.writeFile(txtFile, 'mockdata');
+    await fs.writeFile(xmlFile, 'mockdata');
+
+    await sleep(3000);
   });
 });
 

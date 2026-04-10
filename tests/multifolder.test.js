@@ -46,7 +46,7 @@ describe('addToVmixPlaylist', () => {
 
     const path1 = path.resolve(mp4_file);
     const encodedPath1 = encodeURIComponent(path1);
-    const path_input1 = path.basename(path.dirname(path1));
+    const path_input1 = path.basename(dir2); // playlist name = configured folder name
     const expectedUrl1 =
       `${baseUrl}/api/?Function=ListAdd` +
       `&Input=${path_input1}&Value=${encodedPath1}`;
@@ -55,7 +55,7 @@ describe('addToVmixPlaylist', () => {
 
     const path2 = path.resolve(mp4_file_2);
     const encodedPath2 = encodeURIComponent(path2);
-    const path_input2 = path.basename(path.dirname(path2));
+    const path_input2 = path.basename(dir3); // playlist name = configured folder name
     const expectedUrl2 =
       `${baseUrl}/api/?Function=ListAdd` +
       `&Input=${path_input2}&Value=${encodedPath2}`;
