@@ -7,6 +7,123 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 
+function normalizeResolvedPath(inputPath) {
+  const resolved = path.resolve(inputPath);
+  const root = path.parse(resolved).root;
+  return resolved.length > root.length
+    ? resolved.replace(/[\\/]+$/, '')
+    : resolved;
+}
+
+function normalizeConfigPath(baseDir, inputPath) {
+  const resolved = path.isAbsolute(inputPath)
+    ? inputPath
+    : path.join(baseDir, inputPath);
+  return normalizeResolvedPath(resolved);
+}
+
+function normalizeFolderConfig(baseDir, folderToWatch) {
+  const folderList = Array.isArray(folderToWatch)
+    ? folderToWatch
+    : [folderToWatch];
+  const normalized = folderList
+    .filter((folder) => typeof folder === 'string' && folder.trim() !== '')
+    .map((folder) => normalizeConfigPath(baseDir, folder));
+
+  if (Array.isArray(folderToWatch)) {
+    return normalized;
+  }
+
+  return normalized[0] || normalizeConfigPath(baseDir, './media');
+}
+
+function normalizePlaylistMap(baseDir, playlistMap) {
+  if (!playlistMap || typeof playlistMap !== 'object' || Array.isArray(playlistMap)) {
+    return {};
+  }
+
+  const normalized = {};
+  for (const [folderPath, playlistName] of Object.entries(playlistMap)) {
+    if (typeof playlistName !== 'string' || playlistName.trim() === '') {
+      continue;
+    }
+    const normalizedFolder = normalizeConfigPath(baseDir, folderPath).toLowerCase();
+    normalized[normalizedFolder] = playlistName;
+  }
+
+  return normalized;
+}
+
+function normalizeRuntimeConfig(baseDir, config) {
+  const normalizedConfig = { ...config };
+  normalizedConfig.folderToWatch = normalizeFolderConfig(baseDir, config.folderToWatch);
+  normalizedConfig.playlistMap = normalizePlaylistMap(baseDir, config.playlistMap);
+  return normalizedConfig;
+}
+
+function getMappedPlaylistName(config, normalizedFolderLower) {
+  const directMatch = config.playlistMap?.[normalizedFolderLower];
+  if (typeof directMatch === 'string' && directMatch.trim() !== '') {
+    return directMatch;
+  }
+
+  if (!config.playlistMap || typeof config.playlistMap !== 'object' || Array.isArray(config.playlistMap)) {
+    return null;
+  }
+
+  for (const [folderPath, playlistName] of Object.entries(config.playlistMap)) {
+    if (typeof playlistName !== 'string' || playlistName.trim() === '') {
+      continue;
+    }
+    const normalizedKey = normalizeResolvedPath(folderPath).toLowerCase();
+    if (normalizedKey === normalizedFolderLower) {
+      return playlistName;
+    }
+  }
+
+  return null;
+}
+
+function getPlaylistName(config, absolutePath) {
+  const folders = Array.isArray(config.folderToWatch)
+    ? config.folderToWatch
+    : [config.folderToWatch];
+
+  const normalizedFile = normalizeResolvedPath(absolutePath).toLowerCase();
+  let bestMatch = null;
+
+  for (const folder of folders) {
+    if (typeof folder !== 'string' || folder.trim() === '') {
+      continue;
+    }
+
+    const normalizedFolder = normalizeResolvedPath(folder);
+    const normalizedFolderLower = normalizedFolder.toLowerCase();
+    const isMatch =
+      normalizedFile === normalizedFolderLower ||
+      normalizedFile.startsWith(`${normalizedFolderLower}${path.sep}`);
+
+    if (!isMatch) {
+      continue;
+    }
+
+    if (!bestMatch || normalizedFolderLower.length > bestMatch.normalizedFolderLower.length) {
+      bestMatch = { normalizedFolder, normalizedFolderLower };
+    }
+  }
+
+  if (bestMatch) {
+    const mappedName = getMappedPlaylistName(config, bestMatch.normalizedFolderLower);
+    if (typeof mappedName === 'string' && mappedName.trim() !== '') {
+      return mappedName;
+    }
+
+    return path.basename(bestMatch.normalizedFolder);
+  }
+
+  return path.basename(path.dirname(absolutePath));
+}
+
 function getExeDir() {
   if (process.pkg) {
     return path.dirname(process.execPath);
@@ -50,19 +167,17 @@ function loadConfig() {
     }
   }
 
-  // Sørg for at folderToWatch er absolut
-  if (!path.isAbsolute(config.folderToWatch)) {
-    config.folderToWatch = path.join(exeDir, config.folderToWatch);
-  }
+  config = normalizeRuntimeConfig(exeDir, config);
 
   return config;
 }
 
 function startWatcher(configOverride) {
-  const config =
+  const rawConfig =
     configOverride !== undefined && configOverride !== null
       ? configOverride
       : loadConfig();
+  const config = normalizeRuntimeConfig(getExeDir(), rawConfig);
 
   console.log('Configuration:', config);
   console.log(`Watching ${config.folderToWatch} for changes...`);
@@ -122,7 +237,7 @@ function startWatcher(configOverride) {
     try {
       const absolutePath = path.resolve(filePath);
       const encodedPath = encodeURIComponent(absolutePath);
-      const inputName = path.basename(path.dirname(absolutePath));
+      const inputName = getPlaylistName(config, absolutePath);
       const url = `${config.vmixUrl}/api/?Function=ListAdd&Input=${inputName}&Value=${encodedPath}`;
       await axios.get(url);
       console.log(`Added ${absolutePath} to vMix playlist: ${inputName}`);
@@ -140,11 +255,11 @@ function startWatcher(configOverride) {
     }
     try {
       const absolutePath = path.resolve(filePath);
-      const inputName = path.basename(path.dirname(absolutePath));
+      const inputName = getPlaylistName(config, absolutePath);
       const xmlState = await getVmixState(); // missing function
       if (!xmlState) return;
 
-      const fileInfo = findListItems(xmlState, absolutePath);
+      const fileInfo = await findListItems(xmlState, absolutePath);
 
       if (fileInfo) {
         const url = `${config.vmixUrl}/api/?Function=ListRemove&Input=${inputName}&Value=${fileInfo.index}`;
