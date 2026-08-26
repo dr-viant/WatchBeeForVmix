@@ -12,6 +12,83 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 
+function normalizeResolvedPath(inputPath) {
+  const resolved = path.resolve(inputPath);
+  const root = path.parse(resolved).root;
+  return resolved.length > root.length
+    ? resolved.replace(/[\\/]+$/, '')
+    : resolved;
+}
+
+function normalizeConfigPath(baseDir, inputPath) {
+  const resolved = path.isAbsolute(inputPath)
+    ? inputPath
+    : path.join(baseDir, inputPath);
+  return normalizeResolvedPath(resolved);
+}
+
+function normalizeFolderConfig(baseDir, folderToWatch) {
+  const folderList = Array.isArray(folderToWatch)
+    ? folderToWatch
+    : [folderToWatch];
+  const normalized = folderList
+    .filter((folder) => typeof folder === 'string' && folder.trim() !== '')
+    .map((folder) => normalizeConfigPath(baseDir, folder));
+
+  if (Array.isArray(folderToWatch)) {
+    return normalized;
+  }
+
+  return normalized[0] || normalizeConfigPath(baseDir, './media');
+}
+
+function normalizePlaylistMap(baseDir, playlistMap) {
+  if (!playlistMap || typeof playlistMap !== 'object' || Array.isArray(playlistMap)) {
+    return {};
+  }
+
+  const normalized = {};
+  for (const [folderPath, playlistName] of Object.entries(playlistMap)) {
+    if (typeof playlistName !== 'string' || playlistName.trim() === '') {
+      continue;
+    }
+    const normalizedFolder = normalizeConfigPath(baseDir, folderPath).toLowerCase();
+    normalized[normalizedFolder] = playlistName;
+  }
+
+  return normalized;
+}
+
+function normalizeRuntimeConfig(baseDir, config) {
+  const normalizedConfig = { ...config };
+  normalizedConfig.folderToWatch = normalizeFolderConfig(baseDir, config.folderToWatch);
+  normalizedConfig.playlistMap = normalizePlaylistMap(baseDir, config.playlistMap);
+  return normalizedConfig;
+}
+
+function getMappedPlaylistName(config, normalizedFolderLower) {
+  const directMatch = config.playlistMap?.[normalizedFolderLower];
+  if (typeof directMatch === 'string' && directMatch.trim() !== '') {
+    return directMatch;
+  }
+
+  if (!config.playlistMap || typeof config.playlistMap !== 'object' || Array.isArray(config.playlistMap)) {
+    return null;
+  }
+
+  for (const [folderPath, playlistName] of Object.entries(config.playlistMap)) {
+    if (typeof playlistName !== 'string' || playlistName.trim() === '') {
+      continue;
+    }
+    const normalizedKey = normalizeResolvedPath(folderPath).toLowerCase();
+    if (normalizedKey === normalizedFolderLower) {
+      return playlistName;
+    }
+  }
+
+  return null;
+}
+
 function getBaseDir() {
   // Når koden er pakket som binary med nexe, er process.execPath exe’en
   if (process.pkg) {
@@ -47,14 +124,7 @@ function loadConfig() {
     }
   }
 
-  // Sørg for at folderToWatch er absolut
-  if (Array.isArray(config.folderToWatch)) {
-    config.folderToWatch = config.folderToWatch.map((f) =>
-      path.isAbsolute(f) ? f : path.join(baseDir, f),
-    );
-  } else if (!path.isAbsolute(config.folderToWatch)) {
-    config.folderToWatch = path.join(baseDir, config.folderToWatch);
-  }
+  config = normalizeRuntimeConfig(baseDir, config);
 
   return config;
 }
@@ -97,13 +167,39 @@ function getPlaylistName(config, absolutePath) {
   const folders = Array.isArray(config.folderToWatch)
     ? config.folderToWatch
     : [config.folderToWatch];
-  const normalizedFile = path.resolve(absolutePath).toLowerCase();
+
+  const normalizedFile = normalizeResolvedPath(absolutePath).toLowerCase();
+  let bestMatch = null;
+
   for (const folder of folders) {
-    const normalizedFolder = path.resolve(folder);
-    if (normalizedFile.startsWith((normalizedFolder + path.sep).toLowerCase())) {
-      return path.basename(normalizedFolder);
+    if (typeof folder !== 'string' || folder.trim() === '') {
+      continue;
+    }
+
+    const normalizedFolder = normalizeResolvedPath(folder);
+    const normalizedFolderLower = normalizedFolder.toLowerCase();
+    const isMatch =
+      normalizedFile === normalizedFolderLower ||
+      normalizedFile.startsWith(`${normalizedFolderLower}${path.sep}`);
+
+    if (!isMatch) {
+      continue;
+    }
+
+    if (!bestMatch || normalizedFolderLower.length > bestMatch.normalizedFolderLower.length) {
+      bestMatch = { normalizedFolder, normalizedFolderLower };
     }
   }
+
+  if (bestMatch) {
+    const mappedName = getMappedPlaylistName(config, bestMatch.normalizedFolderLower);
+    if (typeof mappedName === 'string' && mappedName.trim() !== '') {
+      return mappedName;
+    }
+
+    return path.basename(bestMatch.normalizedFolder);
+  }
+
   // Fallback: parent directory name
   return path.basename(path.dirname(absolutePath));
 }
@@ -155,10 +251,11 @@ const removeFromVmixPlaylist = async (config, filePath) => {
 
 
 function startWatcher(configOverride) {
-  const config =
+  const rawConfig =
     configOverride !== undefined && configOverride !== null
       ? configOverride
       : loadConfig();
+  const config = normalizeRuntimeConfig(getBaseDir(), rawConfig);
 
   console.log('Configuration:', config);
   console.log(`Watching ${config.folderToWatch} for changes...`);
