@@ -79,4 +79,73 @@ describe('addToVmixPlaylist', () => {
 
     expect(getSpy).not.toHaveBeenCalled();
   });
+
+  it('bruger custom playlist-navn via playlistMap', async () => {
+    const getSpy = vi
+      .spyOn(axios, 'get')
+      .mockResolvedValue({ data: { ok: true } });
+
+    const configWithMap = {
+      ...config,
+      playlistMap: {
+        [dir2]: 'StudioA',
+        [dir3]: 'StudioB',
+      },
+    };
+
+    const expectedUrl1 =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=StudioA&Value=${encodeURIComponent(path.resolve(mp4_file))}`;
+    const expectedUrl2 =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=StudioB&Value=${encodeURIComponent(path.resolve(mp4_file_2))}`;
+
+    await addToVmixPlaylist(configWithMap, mp4_file);
+    await addToVmixPlaylist(configWithMap, mp4_file_2);
+
+    expect(getSpy).toHaveBeenCalledTimes(2);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl1);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl2);
+  });
+
+  it('vælger mest specifikke mappe-match ved overlap', async () => {
+    const getSpy = vi
+      .spyOn(axios, 'get')
+      .mockResolvedValue({ data: { ok: true } });
+
+    const overlapConfig = {
+      ...config,
+      folderToWatch: [dir, dir2],
+      playlistMap: {
+        [dir]: 'ParentList',
+        [dir2]: 'ChildList',
+      },
+    };
+
+    const expectedUrl =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=ChildList&Value=${encodeURIComponent(path.resolve(mp4_file))}`;
+
+    await addToVmixPlaylist(overlapConfig, mp4_file);
+
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl);
+  });
+
+  it('falder tilbage til path-navn når fil ikke matcher folderToWatch', async () => {
+    const getSpy = vi
+      .spyOn(axios, 'get')
+      .mockResolvedValue({ data: { ok: true } });
+
+    const outsideFile = path.join(os.tmpdir(), `watcher-outside-${Date.now()}.mp4`);
+    const expectedInput = path.basename(path.dirname(path.resolve(outsideFile)));
+    const expectedUrl =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=${expectedInput}&Value=${encodeURIComponent(path.resolve(outsideFile))}`;
+
+    await addToVmixPlaylist(config, outsideFile);
+
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl);
+  });
 });

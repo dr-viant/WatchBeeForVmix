@@ -21,24 +21,34 @@ The tool uses a `config.json` file that will be automatically created in the sam
 
 ```json
 {
-  "folderToWatch": "./media",
+   "folderToWatch": ["./media", "./server2"],
+   "playlistMap": {
+      "./media": "MainPlaylist",
+      "./server2": "BackupPlaylist"
+   },
   "vmixUrl": "http://localhost:8088",
-  "playlistName": "List",
-  "supportedExtensions": [".mp4", ".mov", ".wmv", ".avi", ".mpg", ".mpeg"]
+   "supportedExtensions": [".mp4", ".mov", ".wmv", ".avi", ".mpg", ".mpeg", ".mxf", ".mts"]
 }
 ```
 
 You can modify these settings:
 
-- `folderToWatch`: The directory to monitor for video files (relative or absolute path)
+- `folderToWatch`: The directory or directories to monitor (relative or absolute paths)
+- `playlistMap` (optional): Maps a watched folder path to a custom vMix playlist name
 - `vmixUrl`: The URL where vMix API is accessible
-- `playlistName`: The name of the vMix playlist to manage
 - `supportedExtensions`: Array of supported video file extensions
+
+Playlist name resolution order:
+1. If the matched watched folder exists in `playlistMap`, that mapped name is used.
+2. If there is no mapped name, the watched folder's basename is used.
+3. If the file path does not match any watched folder, fallback is the file's parent folder name.
+
+When watched folders overlap (for example `./media` and `./media/news`), the most specific folder match is used.
 
 ## Usage
 
 1. Make sure vMix is running and the API is accessible
-2. Create a playlist in vMix with the name specified in your config (default is "List")
+2. Create playlists in vMix matching your folder basenames or `playlistMap` values
 3. Run the executable
 4. Add, remove, or modify video files in your watched folder - the tool will automatically update the vMix playlist
 
