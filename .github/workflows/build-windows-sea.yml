@@ -56,7 +56,7 @@ jobs:
           npx postject watchbee.exe NODE_SEA_BLOB dist/node.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 
 
       - name: 'Compress node_modules'
-        run: Compress-Archive -Path node_modules/* -Destination modules.zip
+        run: Compress-Archive -Path node_modules/* -Destination node_modules.zip
 
       - name: Attach releases created
         uses: softprops/action-gh-release@v2
@@ -67,5 +67,5 @@ jobs:
           #   sha256 : ${{ github.sha }}
           files: |
             watchbee.exe
-            modules.zip
+            node_modules.zip
           token: ${{ secrets.GITHUB_TOKEN }}
