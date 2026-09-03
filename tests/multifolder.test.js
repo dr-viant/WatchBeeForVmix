@@ -132,6 +132,61 @@ describe('addToVmixPlaylist', () => {
     expect(getSpy).toHaveBeenCalledWith(expectedUrl);
   });
 
+  it('tillader to mapper at pege på samme playlist', async () => {
+    const getSpy = vi
+      .spyOn(axios, 'get')
+      .mockResolvedValue({ data: { ok: true } });
+
+    const sharedConfig = {
+      ...config,
+      playlistMap: {
+        [dir2]: 'SharedPlaylist',
+        [dir3]: 'SharedPlaylist',
+      },
+    };
+
+    const expectedUrl1 =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=SharedPlaylist&Value=${encodeURIComponent(path.resolve(mp4_file))}`;
+    const expectedUrl2 =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=SharedPlaylist&Value=${encodeURIComponent(path.resolve(mp4_file_2))}`;
+
+    await addToVmixPlaylist(sharedConfig, mp4_file);
+    await addToVmixPlaylist(sharedConfig, mp4_file_2);
+
+    expect(getSpy).toHaveBeenCalledTimes(2);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl1);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl2);
+  });
+
+  it('tillader en mappe at pege på to playlists', async () => {
+    const getSpy = vi
+      .spyOn(axios, 'get')
+      .mockResolvedValue({ data: { ok: true } });
+
+    const multiPlaylistConfig = {
+      ...config,
+      folderToWatch: [dir2],
+      playlistMap: {
+        [dir2]: ['PrimaryPlaylist', 'BackupPlaylist'],
+      },
+    };
+
+    const expectedUrl1 =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=PrimaryPlaylist&Value=${encodeURIComponent(path.resolve(mp4_file))}`;
+    const expectedUrl2 =
+      `${baseUrl}/api/?Function=ListAdd` +
+      `&Input=BackupPlaylist&Value=${encodeURIComponent(path.resolve(mp4_file))}`;
+
+    await addToVmixPlaylist(multiPlaylistConfig, mp4_file);
+
+    expect(getSpy).toHaveBeenCalledTimes(2);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl1);
+    expect(getSpy).toHaveBeenCalledWith(expectedUrl2);
+  });
+
   it('falder tilbage til path-navn når fil ikke matcher folderToWatch', async () => {
     const getSpy = vi
       .spyOn(axios, 'get')

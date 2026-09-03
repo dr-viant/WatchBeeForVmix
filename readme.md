@@ -34,12 +34,39 @@ The tool uses a `config.json` file that will be automatically created in the sam
 You can modify these settings:
 
 - `folderToWatch`: The directory or directories to monitor (relative or absolute paths)
-- `playlistMap` (optional): Maps a watched folder path to a custom vMix playlist name
+- `playlistMap` (optional): Maps a watched folder path to one playlist name or a list of playlist names
 - `vmixUrl`: The URL where vMix API is accessible
 - `supportedExtensions`: Array of supported video file extensions
 
+Example: send the same folder to multiple playlists:
+
+```json
+{
+   "folderToWatch": ["./media"],
+   "playlistMap": {
+      "./media": ["MainPlaylist", "BackupPlaylist", "HighlightsPlaylist"]
+   },
+   "vmixUrl": "http://localhost:8088",
+   "supportedExtensions": [".mp4", ".mov", ".wmv", ".avi", ".mpg", ".mpeg", ".mxf", ".mts"]
+}
+```
+
+You can also mix single-playlist and multi-playlist mappings:
+
+```json
+{
+   "folderToWatch": ["./media", "./server2"],
+   "playlistMap": {
+      "./media": ["MainPlaylist", "BackupPlaylist"],
+      "./server2": "Server2Playlist"
+   },
+   "vmixUrl": "http://localhost:8088",
+   "supportedExtensions": [".mp4", ".mov", ".wmv", ".avi", ".mpg", ".mpeg", ".mxf", ".mts"]
+}
+```
+
 Playlist name resolution order:
-1. If the matched watched folder exists in `playlistMap`, that mapped name is used.
+1. If the matched watched folder exists in `playlistMap`, all mapped playlist names are used.
 2. If there is no mapped name, the watched folder's basename is used.
 3. If the file path does not match any watched folder, fallback is the file's parent folder name.
 

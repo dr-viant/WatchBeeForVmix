@@ -10,10 +10,24 @@ const { startWatcher, loadConfig } = require('../index.js');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function buildVmixState(playlistName, entries) {
+  const items = entries
+    .map((entry) => `<item>${entry}</item>`)
+    .join('');
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<vmix>
+  <inputs>
+    <input key="1" number="1" type="VideoList" title="${playlistName}">
+      <list>${items}</list>
+    </input>
+  </inputs>
+</vmix>`;
+}
+
 describe('watcher integration med vMix API', () => {
   let dir;
   let watcherHandle;
-  let config;
   const baseUrl = 'http://localhost:8088';
 
   beforeEach(async () => {
@@ -32,8 +46,6 @@ describe('watcher integration med vMix API', () => {
     };
 
     await fs.writeFile(configPath, JSON.stringify(config));
-
-    watcherHandle = startWatcher(config);
   });
 
   afterEach(async () => {
@@ -58,15 +70,115 @@ describe('watcher integration med vMix API', () => {
     const inputName = path.basename(dir);
 
     nock(baseUrl)
+      .get('/api')
+      .reply(200, buildVmixState(inputName, []));
+
+    const listAddScope = nock(baseUrl)
       .get(
         `/api/?Function=ListAdd&Input=${inputName}&Value=${encodedPath}`,
       )
       .reply(200, { ok: true });
 
+    watcherHandle = startWatcher({
+      folderToWatch: dir,
+      vmixUrl: baseUrl,
+      supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg'],
+    });
+
     await fs.writeFile(filePath, 'mockdata');
 
     await sleep(3000);
+    expect(listAddScope.isDone()).toBe(true);
+  });
 
+  it('springer startup add over når fil allerede findes i mål-playlisten', async () => {
+    const existingPath = path.resolve(path.join(dir, 'existing.mp4'));
+    const inputName = path.basename(dir);
+
+    nock(baseUrl)
+      .get('/api')
+      .reply(200, buildVmixState(inputName, [encodeURIComponent(existingPath)]));
+
+    let listAddCalls = 0;
+    nock(baseUrl)
+      .get((uri) => uri.includes('Function=ListAdd'))
+      .optionally()
+      .reply(() => {
+        listAddCalls += 1;
+        return [200, { ok: true }];
+      });
+
+    watcherHandle = startWatcher({
+      folderToWatch: dir,
+      vmixUrl: baseUrl,
+      supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg'],
+    });
+
+    await fs.writeFile(existingPath, 'mockdata');
+    await sleep(3000);
+
+    expect(listAddCalls).toBe(0);
+  });
+
+  it('springer change over når fil allerede er indekseret i playlisten', async () => {
+    const existingPath = path.resolve(path.join(dir, 'changed.mp4'));
+    const inputName = path.basename(dir);
+
+    await fs.writeFile(existingPath, 'mockdata-before-start');
+
+    nock(baseUrl)
+      .get('/api')
+      .reply(200, buildVmixState(inputName, [encodeURIComponent(existingPath)]));
+
+    let listAddCalls = 0;
+    nock(baseUrl)
+      .get((uri) => uri.includes('Function=ListAdd'))
+      .optionally()
+      .reply(() => {
+        listAddCalls += 1;
+        return [200, { ok: true }];
+      });
+
+    watcherHandle = startWatcher({
+      folderToWatch: dir,
+      vmixUrl: baseUrl,
+      supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg'],
+    });
+
+    await sleep(3000);
+    await fs.writeFile(existingPath, 'mockdata-after-change');
+    await sleep(3000);
+
+    expect(listAddCalls).toBe(0);
+  }, 15000);
+
+  it('matcher encoded vMix sti mod lokal filsti under startup dedupe', async () => {
+    const existingPath = path.resolve(path.join(dir, 'encoded path clip.mp4'));
+    const inputName = path.basename(dir);
+
+    nock(baseUrl)
+      .get('/api')
+      .reply(200, buildVmixState(inputName, [encodeURIComponent(existingPath)]));
+
+    let listAddCalls = 0;
+    nock(baseUrl)
+      .get((uri) => uri.includes('Function=ListAdd'))
+      .optionally()
+      .reply(() => {
+        listAddCalls += 1;
+        return [200, { ok: true }];
+      });
+
+    watcherHandle = startWatcher({
+      folderToWatch: dir,
+      vmixUrl: baseUrl,
+      supportedExtensions: ['.mp4', '.mov', '.wmv', '.avi', '.mpg', '.mpeg'],
+    });
+
+    await fs.writeFile(existingPath, 'mockdata');
+    await sleep(3000);
+
+    expect(listAddCalls).toBe(0);
   });
 });
 
@@ -88,6 +200,10 @@ describe('watcher multi-folder support', () => {
       vmixUrl: baseUrl,
       supportedExtensions: ['.mp4'],
     };
+
+    nock(baseUrl)
+      .get('/api')
+      .reply(200, buildVmixState(path.basename(dir1), []));
 
     watcherHandle = startWatcher(config);
   });
@@ -153,6 +269,10 @@ describe('Testing file handler logic', () => {
     };
 
     await fs.writeFile(configPath, JSON.stringify(config));
+
+    nock(baseUrl)
+      .get('/api')
+      .reply(200, buildVmixState(path.basename(dir), []));
 
     watcherHandle = startWatcher(config);
   });
